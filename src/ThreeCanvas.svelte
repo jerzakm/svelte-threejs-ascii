@@ -102,7 +102,6 @@
     controls.update();
     renderer.render(scene, camera);
     myAscii.render();
-    // effect.render(scene, camera);
   }
 
   init();

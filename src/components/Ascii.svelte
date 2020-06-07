@@ -114,15 +114,11 @@
     }
 
     oAscii.innerHTML = "<tr><td>" + strChars + "</td></tr>";
-
-    // console.timeEnd('rendering');
-
-    // return oAscii;
   }
   var fResolution = 0.1;
   iWidth = Math.round(width * fResolution);
   iHeight = Math.round(height * fResolution);
-  console.log(iWidth, iHeight);
+
   onMount(() => {
     oCanvas.width = iWidth;
     oCanvas.height = iHeight;
