@@ -1,5 +1,5 @@
 <script>
-  console.log("started");
+  import ThreeCanvas from "./ThreeCanvas.svelte";
 </script>
 
-<h1>k</h1>
+<ThreeCanvas />
