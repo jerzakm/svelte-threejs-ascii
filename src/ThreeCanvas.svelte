@@ -29,6 +29,9 @@
     );
     camera.position.y = 150;
     camera.position.z = 500;
+    camera.scale.x = -1;
+    camera.scale.y = -1;
+    camera.updateProjectionMatrix();
 
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0, 0, 0);
@@ -129,9 +132,7 @@
     composer.render(scene, camera);
     // renderer.render(scene, camera);
 
-    if (counter % 2 == 0) {
-      myAscii.render();
-    }
+    myAscii.render();
   }
 
   init();
@@ -139,10 +140,14 @@
   let debugCanvas;
   let debugCtx;
   onMount(() => {
-    debugCanvas.width = window.innerWidth;
-    debugCanvas.height = window.innerHeight;
-    debugCanvas.style.width = `${window.innerWidth}px`;
-    debugCanvas.style.height = `${window.innerHeight}px`;
+    if (debugCanvas) {
+      debugCanvas.width = window.innerWidth;
+      debugCanvas.height = window.innerHeight;
+      debugCanvas.style.width = `${window.innerWidth}px`;
+      debugCanvas.style.height = `${window.innerHeight}px`;
+      debugCtx = debugCanvas.getContext("2d");
+    }
+
     // debugCanvas.style.clipPath = `polygon(50% 0%, 100% 0%, 100% 100%, 50% 100%)`;
     // debugCanvas.style.position = "fixed";
 
@@ -150,7 +155,6 @@
     // asciiDom.style.clipPath = `polygon(50% 0%, 50% 100%, 0% 50%, 0% 100%)`;
     // asciiDom.style.position = "fixed";
 
-    debugCtx = debugCanvas.getContext("2d");
     myAscii.debugCtx = debugCtx;
     controls = new TrackballControls(camera, asciiDom);
     animate();
@@ -158,5 +162,5 @@
   });
 </script>
 
-<canvas bind:this={debugCanvas} />
+<!-- <canvas bind:this={debugCanvas} /> -->
 <Ascii {renderer} bind:this={myAscii} {debugCtx} />

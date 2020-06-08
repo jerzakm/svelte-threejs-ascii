@@ -1,7 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Cutive+Mono&display=swap');
+@font-face {
+  font-family: 'square';
+  src: url('/square.ttf');
+}
 
 body {
-  font-family: 'Cutive', monospace;
+  font-family: square;
   background-color: black;
   color: white;
 }

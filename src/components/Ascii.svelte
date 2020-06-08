@@ -6,13 +6,12 @@
   let aCharList = " .,:;i1tfLCG08@".split("");
   let bResolution = 0.15;
   let iScale = 1;
-  let bColor = false;
+  let bColor = true;
   let alpha = false;
   let block = false;
   let bInvert = true;
   export let renderer;
   export let debugCtx;
-  $: console.log(debugCtx);
 
   let tempStore = {};
 
@@ -36,7 +35,7 @@
   var fResolution;
   switch (strResolution) {
     case "low":
-      fResolution = 0.1;
+      fResolution = 0.05;
       break;
     case "medium":
       fResolution = 0.5;
@@ -57,9 +56,6 @@
   }
 
   function asciifyImage(canvasRenderer, oAscii) {
-    oCtx.clearRect(0, 0, iWidth, iHeight);
-
-    oCtx.drawImage(oCanvasImg, 0, 0, iWidth, iHeight);
     gl = oCanvasImg.getContext("webgl");
     let pixels = new Uint8Array(
       gl.drawingBufferWidth * gl.drawingBufferHeight * 4
@@ -92,31 +88,41 @@
         data[i] = pixels[i];
       }
 
+      // imgData.data = new Uint8Array(pixels);
+
       // now we can draw our imagedata onto the canvas
       ctx.putImageData(imgData, 0, 0);
 
-      const debugW = Math.floor(gl.drawingBufferWidth / 10);
-      const debugH = Math.floor(gl.drawingBufferHeight / 10);
+      // const debugW = Math.floor(gl.drawingBufferWidth / 10);
+      // const debugH = Math.floor(gl.drawingBufferHeight / 10);
 
-      for (let x = 0; x < debugW; x++) {
-        for (let y = 0; y < debugH; y++) {
+      // DEBUG -> draw dots where the color is comign from
+      for (let x = 0; x < iWidth; x++) {
+        for (let y = 0; y < iHeight; y++) {
           ctx.fillStyle = "#FF0000";
-          ctx.fillRect(x * 10 + 4, y * 10 + 4, 2, 2);
+          ctx.fillRect(x * 20 + 4, y * 20 + 4, 2, 2);
         }
       }
     }
 
-    var oImgData = oCtx.getImageData(0, 0, iWidth, iHeight).data;
-
     var strChars = "";
 
-    for (var y = 0; y < iHeight; y += 2) {
-      for (var x = 0; x < iWidth; x++) {
-        var iOffset = (y * iWidth + x) * 4;
+    function getColorIndicesForCoord(x, y, width) {
+      const red = y * (width * 4) + x * 4;
+      return red;
+    }
 
-        var iRed = oImgData[iOffset];
-        var iGreen = oImgData[iOffset + 1];
-        var iBlue = oImgData[iOffset + 2];
+    for (var y = 0; y < iHeight; y++) {
+      for (var x = 0; x < iWidth; x++) {
+        var iOffset = getColorIndicesForCoord(
+          x * 20,
+          y * 20,
+          gl.drawingBufferWidth
+        );
+        var iRed = pixels[iOffset];
+        var iGreen = pixels[iOffset + 1];
+        var iBlue = pixels[iOffset + 2];
+
         // var iRed = pixels[iOffset];
         // var iGreen = pixels[iOffset + 1];
         // var iBlue = pixels[iOffset + 2];
@@ -175,8 +181,8 @@
     oAscii.cellSpacing = 0;
     oAscii.cellPadding = 0;
 
-    var fFontSize = (2 / fResolution) * iScale;
-    var fLineHeight = (2 / fResolution) * iScale;
+    var fFontSize = 20;
+    var fLineHeight = fFontSize;
 
     var oStyle = oAscii.style;
     oAscii.style.display = "inline";
@@ -185,16 +191,15 @@
     oAscii.style.whiteSpace = "pre";
     oAscii.style.margin = "0px";
     oAscii.style.padding = "0px";
-    oAscii.style.letterSpacing = fLetterSpacing + "px";
-    oAscii.style.fontFamily = "courier new, monospace";
+    // oAscii.style.letterSpacing = fLetterSpacing + "px";
+    oAscii.style.fontFamily = "square";
     oAscii.style.fontSize = fFontSize + "px";
-    oAscii.style.lineHeight = fLineHeight / 2 + "px";
-    oAscii.style.textAlign = "left";
+    oAscii.style.lineHeight = fLineHeight + "px";
+    // oAscii.style.textAlign = "left";
     oAscii.style.textDecoration = "none";
     oAscii.style.color = "grey";
     var aDefaultCharList = " .,:;i1tfLCG08@".split("");
     var aDefaultColorCharList = " CGO08@".split("");
-    var strFont = "courier new, monospace";
 
     oCanvasImg = renderer.domElement;
 
@@ -277,9 +282,7 @@
         <td>
           {#each { length: iHeight } as y, y}
             {#each { length: iWidth } as x, x}
-              {#if y % 2 == 0}
-                <AsciiCell {x} {y} {bColor} />
-              {/if}
+              <AsciiCell {x} {y} {bColor} />
             {/each}
             <br />
           {/each}
