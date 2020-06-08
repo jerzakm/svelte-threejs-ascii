@@ -46,7 +46,6 @@ var AsciiEffect = function (renderer, charSet, options) {
   var oImg;
 
   this.setSize = function (w, h) {
-    console.log(w, h)
     width = w;
     height = h;
 

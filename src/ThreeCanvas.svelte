@@ -7,9 +7,14 @@
   import Ascii from "./components/Ascii.svelte";
 
   import { AsciiEffect } from "./mAsciiEffect.js";
+  import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
+  import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
+  import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
+  import { PixelShader } from "three/examples/jsm/shaders/PixelShader.js";
   import { TrackballControls } from "three/examples/jsm/controls/TrackballControls.js";
 
   let camera, controls, scene, renderer, effect;
+  let composer, pixelPass, params;
 
   let sphere, plane;
 
@@ -37,7 +42,7 @@
     scene.add(light);
 
     sphere = new THREE.Mesh(
-      new THREE.SphereBufferGeometry(200, 200, 100),
+      new THREE.SphereBufferGeometry(200, 20, 10),
       new THREE.MeshPhongMaterial({ flatShading: true })
     );
     scene.add(sphere);
@@ -69,6 +74,24 @@
     document.body.appendChild(effect.domElement);
 
     window.addEventListener("resize", onWindowResize, false);
+
+    composer = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene, camera));
+
+    pixelPass = new ShaderPass(PixelShader);
+    pixelPass.uniforms["resolution"].value = new THREE.Vector2(
+      window.innerWidth,
+      window.innerHeight
+    );
+    pixelPass.uniforms["resolution"].value.multiplyScalar(
+      window.devicePixelRatio
+    );
+    composer.addPass(pixelPass);
+    params = {
+      pixelSize: 20,
+      postprocessing: true
+    };
+    pixelPass.uniforms["pixelSize"].value = params.pixelSize;
   }
 
   function onWindowResize() {
@@ -92,7 +115,10 @@
 
   let myAscii;
 
+  let counter = 0;
+
   function render() {
+    counter++;
     var timer = Date.now() - start;
 
     sphere.position.y = Math.abs(Math.sin(timer * 0.002)) * 150;
@@ -100,17 +126,37 @@
     sphere.rotation.z = timer * 0.0002;
 
     controls.update();
-    renderer.render(scene, camera);
-    myAscii.render();
+    composer.render(scene, camera);
+    // renderer.render(scene, camera);
+
+    if (counter % 2 == 0) {
+      myAscii.render();
+    }
   }
 
   init();
-
+  console.log(composer);
+  let debugCanvas;
+  let debugCtx;
   onMount(() => {
-    controls = new TrackballControls(camera, myAscii.getDomElement());
+    debugCanvas.width = window.innerWidth;
+    debugCanvas.height = window.innerHeight;
+    debugCanvas.style.width = `${window.innerWidth}px`;
+    debugCanvas.style.height = `${window.innerHeight}px`;
+    // debugCanvas.style.clipPath = `polygon(50% 0%, 100% 0%, 100% 100%, 50% 100%)`;
+    // debugCanvas.style.position = "fixed";
+
+    const asciiDom = myAscii.getDomElement();
+    // asciiDom.style.clipPath = `polygon(50% 0%, 50% 100%, 0% 50%, 0% 100%)`;
+    // asciiDom.style.position = "fixed";
+
+    debugCtx = debugCanvas.getContext("2d");
+    myAscii.debugCtx = debugCtx;
+    controls = new TrackballControls(camera, asciiDom);
     animate();
     requestAnimationFrame(animate);
   });
 </script>
 
-<Ascii {renderer} bind:this={myAscii} />
+<canvas bind:this={debugCanvas} />
+<Ascii {renderer} bind:this={myAscii} {debugCtx} />
