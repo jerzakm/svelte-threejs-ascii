@@ -2,25 +2,41 @@
   import { onMount } from "svelte";
   import { initStores, stores } from "../stores";
   import AsciiCell from "./AsciiCell.svelte";
-  // let charSet = " .:-=+*#%@";
-  let aCharList = " .,:;i1tfLCG08@".split("");
-  let bResolution = 0.15;
-  let iScale = 1;
-  let bColor = true;
-  let alpha = false;
-  let block = false;
-  let bInvert = true;
+  import { TrackballControls } from "three/examples/jsm/controls/TrackballControls.js";
+
+  // ascii charlist
+  export let charSet = " .:|=~8";
+  $: aCharList = charSet.split("");
+
+  // render colors?
+  export let color = true;
+  // invert rendered brightness
+  export let invert = true;
+
+  // three webgl renderer
   export let renderer;
+  // 2d debug context
   export let debugCtx;
 
+  // 1 ascii Size in pixels
+  export let pixelSize;
+
+  // three camera used for Trackball controlls
+  export let camera;
+
+  // temp ascii char and color store for comparison
   let tempStore = {};
 
-  let strResolution = "low";
-  let width;
-  let height;
+  let inner;
+  export let renderToConsole;
 
+  let width = window.innerWidth;
+  let height = window.innerHeight;
+
+  // dom container
   let domElement;
-  let oAscii;
+  // ascii table
+  let asciiTable;
 
   let iWidth;
   let iHeight;
@@ -28,35 +44,60 @@
   let oCanvasImg;
   let oCanvas = document.createElement("canvas");
   let oCtx;
-
+  let controls;
   let gl;
 
   let mounted;
   var fResolution;
-  switch (strResolution) {
-    case "low":
-      fResolution = 0.05;
-      break;
-    case "medium":
-      fResolution = 0.5;
-      break;
-    case "high":
-      fResolution = 1;
-      break;
+
+  // three renderer size
+  renderer.setSize(width, height);
+
+  // ascii resolution
+  iWidth = Math.round(width / pixelSize);
+  iHeight = Math.round(height / pixelSize);
+
+  initStores(iWidth, iHeight, color);
+
+  onMount(() => {
+    controls = new TrackballControls(camera, domElement);
+    oCanvas.width = iWidth;
+    oCanvas.height = iHeight;
+
+    setTableStyles(asciiTable);
+    oCanvasImg = renderer.domElement;
+
+    mounted = true;
+  });
+
+  function setTableStyles(asciiTable) {
+    asciiTable.cellSpacing = 0;
+    asciiTable.cellPadding = 0;
+
+    asciiTable.style.position = "fixed";
+    asciiTable.style.whiteSpace = "pre";
+    asciiTable.style.margin = "0px";
+    asciiTable.style.padding = "0px";
+    // perfectly square roguelike font => http://strlen.com/square/
+    asciiTable.style.fontFamily = "square";
+
+    asciiTable.style.fontSize = pixelSize + "px";
+    asciiTable.style.lineHeight = pixelSize + "px";
+    asciiTable.style.textDecoration = "none";
   }
-  setSize(window.innerWidth, window.innerHeight);
 
   export function getDomElement() {
     return domElement;
   }
 
   export function render(scene, camera) {
-    // renderer.render(scene, camera);
-    asciifyImage(renderer, oAscii);
+    controls.update();
+    asciifyImage(renderer, asciiTable);
   }
 
-  function asciifyImage(canvasRenderer, oAscii) {
+  function asciifyImage(canvasRenderer, asciiTable) {
     gl = oCanvasImg.getContext("webgl");
+    //read pixel data directyl from webgl context
     let pixels = new Uint8Array(
       gl.drawingBufferWidth * gl.drawingBufferHeight * 4
     );
@@ -69,6 +110,8 @@
       gl.UNSIGNED_BYTE,
       pixels
     );
+
+    // Debug canvas if you want to see raw threejs output
     if (debugCtx) {
       const ctx = debugCtx;
       ctx.clearRect(0, 0, width, height);
@@ -77,30 +120,21 @@
         gl.drawingBufferWidth,
         gl.drawingBufferHeight
       );
-      const data = imgData.data;
 
-      // copy img byte-per-byte into our ImageData
       for (
         let i = 0;
         i < gl.drawingBufferWidth * gl.drawingBufferHeight * 4;
         i++
       ) {
-        data[i] = pixels[i];
+        imgData.data[i] = pixels[i];
       }
-
-      // imgData.data = new Uint8Array(pixels);
-
-      // now we can draw our imagedata onto the canvas
       ctx.putImageData(imgData, 0, 0);
-
-      // const debugW = Math.floor(gl.drawingBufferWidth / 10);
-      // const debugH = Math.floor(gl.drawingBufferHeight / 10);
 
       // DEBUG -> draw dots where the color is comign from
       for (let x = 0; x < iWidth; x++) {
         for (let y = 0; y < iHeight; y++) {
           ctx.fillStyle = "#FF0000";
-          ctx.fillRect(x * 20 + 4, y * 20 + 4, 2, 2);
+          ctx.fillRect(x * pixelSize + 4, y * pixelSize + 4, 2, 2);
         }
       }
     }
@@ -112,34 +146,28 @@
       return red;
     }
 
-    for (var y = 0; y < iHeight; y++) {
-      for (var x = 0; x < iWidth; x++) {
-        var iOffset = getColorIndicesForCoord(
-          x * 20,
-          y * 20,
+    for (let y = 0; y < iHeight; y++) {
+      for (let x = 0; x < iWidth; x++) {
+        const iOffset = getColorIndicesForCoord(
+          x * pixelSize,
+          y * pixelSize,
           gl.drawingBufferWidth
         );
-        var iRed = pixels[iOffset];
-        var iGreen = pixels[iOffset + 1];
-        var iBlue = pixels[iOffset + 2];
+        const iRed = pixels[iOffset];
+        const iGreen = pixels[iOffset + 1];
+        const iBlue = pixels[iOffset + 2];
 
-        // var iRed = pixels[iOffset];
-        // var iGreen = pixels[iOffset + 1];
-        // var iBlue = pixels[iOffset + 2];
+        let iCharIdx;
 
-        var iCharIdx;
-
-        var fBrightness = (0.3 * iRed + 0.59 * iGreen + 0.11 * iBlue) / 255;
-
-        fBrightness = (0.3 * iRed + 0.59 * iGreen + 0.11 * iBlue) / 255;
+        let fBrightness = (0.3 * iRed + 0.59 * iGreen + 0.11 * iBlue) / 255;
 
         iCharIdx = Math.floor((1 - fBrightness) * (aCharList.length - 1));
 
-        if (bInvert) {
+        if (invert) {
           iCharIdx = aCharList.length - iCharIdx - 1;
         }
 
-        var strThisChar = aCharList[iCharIdx];
+        let strThisChar = aCharList[iCharIdx];
 
         if (strThisChar === undefined) strThisChar = " ";
 
@@ -150,7 +178,7 @@
           stores[hash].set(strThisChar);
         }
 
-        if (bColor) {
+        if (color) {
           const hash = `c${x},${y}`;
           const color = `rgb(${iRed},${iGreen},${iBlue})`;
           if (tempStore[hash] != color) {
@@ -160,129 +188,28 @@
         }
       }
     }
-  }
-  iWidth = Math.round(width * fResolution);
-  iHeight = Math.round(height * fResolution);
 
-  initStores(iWidth, iHeight, bColor);
+    //This logs 3d render to console. Cool but glitchy. No color
+    if (renderToConsole && inner && !color) {
+      let html = inner.innerHTML;
+      const searchRegExp = /<br>/g;
+      const replaceWith = "\n";
 
-  onMount(() => {
-    oCanvas.width = iWidth;
-    oCanvas.height = iHeight;
-
-    oImg = renderer.domElement;
-
-    if (oImg.style.backgroundColor) {
-      oAscii.rows[0].cells[0].style.backgroundColor =
-        oImg.style.backgroundColor;
-      oAscii.rows[0].cells[0].style.color = oImg.style.color;
+      const result = html.replace(searchRegExp, replaceWith);
+      console.clear();
+      console.log(result);
     }
-
-    oAscii.cellSpacing = 0;
-    oAscii.cellPadding = 0;
-
-    var fFontSize = 20;
-    var fLineHeight = fFontSize;
-
-    var oStyle = oAscii.style;
-    oAscii.style.display = "inline";
-    oAscii.style.width = Math.round((iWidth / fResolution) * iScale) + "px";
-    oAscii.style.height = Math.round((iHeight / fResolution) * iScale) + "px";
-    oAscii.style.whiteSpace = "pre";
-    oAscii.style.margin = "0px";
-    oAscii.style.padding = "0px";
-    // oAscii.style.letterSpacing = fLetterSpacing + "px";
-    oAscii.style.fontFamily = "square";
-    oAscii.style.fontSize = fFontSize + "px";
-    oAscii.style.lineHeight = fLineHeight + "px";
-    // oAscii.style.textAlign = "left";
-    oAscii.style.textDecoration = "none";
-    oAscii.style.color = "grey";
-    var aDefaultCharList = " .,:;i1tfLCG08@".split("");
-    var aDefaultColorCharList = " CGO08@".split("");
-
-    oCanvasImg = renderer.domElement;
-
-    oCtx = oCanvas.getContext("2d");
-
-    var aCharList = bColor ? aDefaultColorCharList : aDefaultCharList;
-
-    if (bResolution) fResolution = bResolution;
-
-    // Setup dom
-
-    // adjust letter-spacing for all combinations of scale and resolution to get it to fit the image width.
-
-    var fLetterSpacing = 0;
-
-    if (strResolution == "low") {
-      switch (iScale) {
-        case 1:
-          fLetterSpacing = -1;
-          break;
-        case 2:
-        case 3:
-          fLetterSpacing = -2.1;
-          break;
-        case 4:
-          fLetterSpacing = -3.1;
-          break;
-        case 5:
-          fLetterSpacing = -4.15;
-          break;
-      }
-    }
-
-    if (strResolution == "medium") {
-      switch (iScale) {
-        case 1:
-          fLetterSpacing = 0;
-          break;
-        case 2:
-          fLetterSpacing = -1;
-          break;
-        case 3:
-          fLetterSpacing = -1.04;
-          break;
-        case 4:
-        case 5:
-          fLetterSpacing = -2.1;
-          break;
-      }
-    }
-
-    if (strResolution == "high") {
-      switch (iScale) {
-        case 1:
-        case 2:
-          fLetterSpacing = 0;
-          break;
-        case 3:
-        case 4:
-        case 5:
-          fLetterSpacing = -1;
-          break;
-      }
-    }
-
-    mounted = true;
-  });
-
-  function setSize(w, h) {
-    width = w;
-    height = h;
-    renderer.setSize(w, h);
   }
 </script>
 
 <div bind:this={domElement} style="cursor: default;">
-  <table bind:this={oAscii}>
+  <table bind:this={asciiTable}>
     {#if mounted}
       <tr>
-        <td>
+        <td bind:this={inner}>
           {#each { length: iHeight } as y, y}
             {#each { length: iWidth } as x, x}
-              <AsciiCell {x} {y} {bColor} />
+              <AsciiCell {x} {y} {color} />
             {/each}
             <br />
           {/each}

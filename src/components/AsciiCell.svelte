@@ -1,7 +1,7 @@
 <script>
   export let x;
   export let y;
-  export let bColor;
+  export let color;
   import { stores } from "../stores";
   import { onMount } from "svelte";
   const hash = `${x},${y}`;
@@ -14,7 +14,7 @@
   });
 
   onMount(() => {
-    if (bColor) {
+    if (color) {
       stores[`c${x},${y}`].subscribe(c => {
         span.style.color = c;
       });
@@ -22,4 +22,6 @@
   });
 </script>
 
-<d bind:this={span}>{char}</d>
+{#if color}
+  <span bind:this={span}>{char}</span>
+{:else}{char}{/if}
